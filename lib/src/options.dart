@@ -15,6 +15,7 @@ import 'package:yaml/yaml.dart';
 
 import 'package:dev_compiler/strong_mode.dart' show StrongModeOptions;
 
+const String _V8_BINARY_DEFAULT = 'node';
 const bool _CLOSURE_DEFAULT = false;
 
 /// Options used to set up Source URI resolution in the analysis context.
@@ -89,7 +90,7 @@ class RunnerOptions {
   /// executable.
   final String v8Binary;
 
-  const RunnerOptions({this.v8Binary: 'iojs'});
+  const RunnerOptions({this.v8Binary: _V8_BINARY_DEFAULT});
 }
 
 /// General options used by the dev compiler and server.
@@ -201,7 +202,7 @@ CompilerOptions parseOptions(List<String> argv, {bool forceOutDir: false}) {
   if (dumpInfo == null) dumpInfo = serverMode;
 
   var v8Binary = args['v8-binary'];
-  if (v8Binary == null) v8Binary = 'iojs';
+  if (v8Binary == null) v8Binary = _V8_BINARY_DEFAULT;
 
   var customUrlMappings = <String, String>{};
   for (var mapping in args['url-mapping']) {
@@ -311,11 +312,14 @@ final ArgParser argParser = StrongModeOptions.addArguments(new ArgParser()
       abbr: 'i', help: 'Dump summary information', defaultsTo: null)
   ..addOption('v8-binary',
       help: 'V8-based binary to run JavaScript output with (iojs, node, d8)',
-      defaultsTo: 'iojs')
+      defaultsTo: _V8_BINARY_DEFAULT)
   ..addOption('dump-info-file',
       abbr: 'f',
       help: 'Dump info json file (requires dump-info)',
       defaultsTo: null));
+
+const _ENTRY_POINTS = const ['devc.dart', 'devrun.dart'];
+final _ENTRY_POINT_SNAPSHOTS = _ENTRY_POINTS.map((f) => "$f.snapshot");
 
 /// Tries to find the `lib/runtime/` directory of the dev_compiler package. This
 /// works when running devc from it's sources or from a snapshot that is
@@ -336,13 +340,13 @@ String _computeRuntimeDir() {
   if (!new File(lockfile).existsSync()) return null;
 
   // If running from sources we found it!
-  if (file == 'devc.dart' || file == 'devrun.dart') {
+  if (_ENTRY_POINTS.contains(file)) {
     return path.join(dir, 'lib', 'runtime');
   }
 
   // If running from a pub global snapshot, we need to read the lock file to
   // find where the actual sources are located in the pub cache.
-  if (file == 'devc.dart.snapshot') {
+  if (_ENTRY_POINT_SNAPSHOTS.contains(file)) {
     // Note: this depends on implementation details of pub.
     var yaml = loadYaml(new File(lockfile).readAsStringSync());
     var info = yaml['packages']['dev_compiler'];
