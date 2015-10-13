@@ -105,6 +105,8 @@ class CompilerOptions {
   /// Whether to dump summary information on the console.
   final bool dumpInfo;
 
+  final bool htmlReport;
+
   /// If not null, path to a file that will store a json representation of the
   /// summary information (only used if [dumpInfo] is true).
   final String dumpInfoFile;
@@ -155,6 +157,7 @@ class CompilerOptions {
       this.runnerOptions: const RunnerOptions(),
       this.checkSdk: false,
       this.dumpInfo: false,
+      this.htmlReport: false,
       this.dumpInfoFile,
       this.useColors: true,
       this.help: false,
@@ -204,6 +207,8 @@ CompilerOptions parseOptions(List<String> argv, {bool forceOutDir: false}) {
   var dumpInfo = args['dump-info'];
   if (dumpInfo == null) dumpInfo = serverMode;
 
+  var htmlReport = args['html-report'];
+
   var v8Binary = args['v8-binary'];
   if (v8Binary == null) v8Binary = 'iojs';
 
@@ -242,6 +247,7 @@ CompilerOptions parseOptions(List<String> argv, {bool forceOutDir: false}) {
       runnerOptions: new RunnerOptions(v8Binary: v8Binary),
       checkSdk: args['sdk-check'],
       dumpInfo: dumpInfo,
+      htmlReport: htmlReport,
       dumpInfoFile: args['dump-info-file'],
       useColors: useColors,
       help: showUsage,
@@ -315,6 +321,8 @@ final ArgParser argParser = StrongModeOptions.addArguments(new ArgParser()
   ..addOption('log', abbr: 'l', help: 'Logging level (defaults to warning)')
   ..addFlag('dump-info',
       abbr: 'i', help: 'Dump summary information', defaultsTo: null)
+  ..addFlag('html-report',
+      help: 'Output compilation results to html', defaultsTo: null)
   ..addOption('v8-binary',
       help: 'V8-based binary to run JavaScript output with (iojs, node, d8)',
       defaultsTo: 'iojs')
