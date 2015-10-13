@@ -28,7 +28,13 @@ class HtmlReporter implements AnalysisErrorListener {
   }
 
   void onError(AnalysisError error) {
-    reporter.onError(error);
+    try {
+      reporter.onError(error);
+    } catch (e, st) {
+      print(e);
+      print(st);
+    }
+
     errors.add(error);
   }
 
@@ -348,15 +354,9 @@ String _comma(int count) {
   return str.substring(0, pos) + ',' + str.substring(pos);
 }
 
-// String _titleCase(String str) {
-//   if (str.isEmpty) return str;
-//   return str.substring(0, 1).toUpperCase() + str.substring(1);
-// }
-
 const String _css = '''
-
 h2 {
-  margin-top: 1em;
+  margin-top: 2em;
   padding-bottom: 0.3em;
   font-size: 1.75em;
   line-height: 1.225;
