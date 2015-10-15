@@ -3,12 +3,12 @@ dart_library.library('closure', null, /* Imports */[
   'dart/core',
   'dart/js'
 ], /* Lazy imports */[
-], function(closure, dart, core, js) {
+], function(exports, dart, core, js) {
   'use strict';
   let dartx = dart.dartx;
   /** @typedef {function({i: (?number|undefined)}=)} */
-  closure.Callback = dart.typedef('Callback', () => dart.functionType(dart.void, [], {i: core.int}));
-  closure.Foo$ = dart.generic(function(T) {
+  exports.Callback = dart.typedef('Callback', () => dart.functionType(dart.void, [], {i: core.int}));
+  exports.Foo$ = dart.generic(function(T) {
     class Foo extends core.Object {
       /**
        * @param {?number} i
@@ -111,16 +111,16 @@ dart_library.library('closure', null, /* Imports */[
     });
     return Foo;
   });
-  closure.Foo = Foo$();
+  exports.Foo = Foo$();
   /** @final {string} */
   Foo.some_static_constant = "abc";
   /** @final {string} */
   Foo.some_static_final = "abc";
   /** @type {string} */
   Foo.some_static_var = "abc";
-  closure.Bar = class Bar extends core.Object {};
+  exports.Bar = class Bar extends core.Object {};
   let Baz$super = dart.mixin(Foo$(core.int), Bar);
-  closure.Baz = class Baz extends Baz$super {
+  exports.Baz = class Baz extends Baz$super {
     /** @param {?number} i */
     Baz(i) {
       super.Foo(i, 123);
@@ -141,10 +141,10 @@ dart_library.library('closure', null, /* Imports */[
   /** @final {string} */
   let some_top_level_constant = "abc";
   /** @final {string} */
-  closure.some_top_level_final = "abc";
+  exports.some_top_level_final = "abc";
   /** @type {string} */
-  closure.some_top_level_var = "abc";
+  exports.some_top_level_var = "abc";
   // Exports:
-  closure.main = main;
-  closure.some_top_level_constant = some_top_level_constant;
+  exports.main = main;
+  exports.some_top_level_constant = some_top_level_constant;
 });

@@ -133,7 +133,8 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
   final _qualifiedIds = new List<Tuple2<Element, JS.MaybeQualifiedId>>();
 
   /// The name for the library's exports inside itself.
-  var _exportsVar;
+  /// `exports` was chosen as the most similar to ES module patterns.
+  final _exportsVar = new JS.Identifier('exports');
   final _dartxVar = new JS.Identifier('dartx');
   final _runtimeLibVar = new JS.Identifier('dart');
   final _namedArgTemp = new JS.TemporaryId('opts');
@@ -165,9 +166,6 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     _jsArray = interceptors.getType('JSArray');
 
     _objectMembers = getObjectMemberMap(types);
-    // `exports` was chosen as the most similar to ES module patterns.
-    _exportsVar = new JS.TemporaryId(
-        _qualifyExports ? jsLibraryName(currentLibrary) : 'exports');
   }
 
   /// Whether to always refer to current library's exported types as if they
@@ -1771,7 +1769,7 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     return id;
 
     // if (name is JS.LiteralString
-    //     && isCurrentLibrary
+    //     && !fromAnotherLibrary
     //     && !mutableTopLevel
     //     && (isPrivate || !_qualifyExports)) {
     //   return new JS.Identifier(name.valueWithoutQuotes);
