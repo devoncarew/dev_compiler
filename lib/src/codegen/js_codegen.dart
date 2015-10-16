@@ -1851,6 +1851,8 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     for (var arg in node.arguments) {
       if (arg is NamedExpression) {
         named.add(_visit(arg));
+      } else if (arg is MethodInvocation && '${arg.target}' == 'varargs') {
+        args.add(new JS.RestParameter(_visit(arg.argumentList.arguments.single)));
       } else {
         args.add(_visit(arg));
       }
@@ -1869,8 +1871,8 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
   }
 
   @override
-  List<JS.Identifier> visitFormalParameterList(FormalParameterList node) {
-    var result = <JS.Identifier>[];
+  List<JS.Parameter> visitFormalParameterList(FormalParameterList node) {
+    var result = <JS.Parameter>[];
     for (FormalParameter param in node.parameters) {
       if (param.kind == ParameterKind.NAMED) {
         result.add(_namedArgTemp);
@@ -2517,8 +2519,14 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
       _visit(node.expression);
 
   @override
-  visitFormalParameter(FormalParameter node) =>
-      visitSimpleIdentifier(node.identifier);
+  visitFormalParameter(FormalParameter node) {  
+    var id = visitSimpleIdentifier(node.identifier);
+    var isVarArgs = node.metadata.any(_isVarArgsAnnotation);
+    return isVarArgs ? new JS.RestParameter(id) : id;
+  }
+
+  static bool _isVarArgsAnnotation(Annotation m) =>
+      m.name.name == 'varargs' && m.constructorName == null && m.arguments == null;
 
   @override
   JS.This visitThisExpression(ThisExpression node) => new JS.This();

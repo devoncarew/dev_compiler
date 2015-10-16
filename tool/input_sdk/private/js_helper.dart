@@ -24,6 +24,13 @@ class _Patch {
 
 const _Patch patch = const _Patch();
 
+class _Varargs {
+  const _Varargs();
+  apply(args) {}
+}
+
+const _Varargs varargs = const _Varargs();
+
 
 /// Marks the internal map in dart2js, so that internal libraries can is-check
 // them.
