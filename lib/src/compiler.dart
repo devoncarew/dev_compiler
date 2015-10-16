@@ -7,6 +7,7 @@ library dev_compiler.src.compiler;
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert' show JSON;
 import 'dart:math' as math;
 import 'dart:io';
 
@@ -25,8 +26,6 @@ import 'package:logging/logging.dart' show Level, Logger, LogRecord;
 import 'package:path/path.dart' as path;
 
 import 'analysis_context.dart';
-import 'checker/checker.dart';
-import 'checker/rules.dart';
 import 'codegen/html_codegen.dart' as html_codegen;
 import 'codegen/js_codegen.dart';
 import 'info.dart'
@@ -61,15 +60,28 @@ CompilerOptions validateOptions(List<String> args, {bool forceOutDir: false}) {
   return options;
 }
 
+/// Compile with the given options and return success or failure.
 bool compile(CompilerOptions options) {
   assert(!options.serverMode);
+
   var context = createAnalysisContextWithSources(
       options.strongOptions, options.sourceOptions);
   var reporter = createErrorReporter(context, options);
   var status = new BatchCompiler(context, options, reporter: reporter).run();
+
   if (reporter is HtmlReporter) {
     (reporter as HtmlReporter).finish(options);
   }
+
+  if (options.dumpInfo && reporter is SummaryReporter) {
+    var result = (reporter as SummaryReporter).result;
+    print(summaryToString(result));
+    if (options.dumpInfoFile != null) {
+      var file = new File(options.dumpInfoFile);
+      file.writeAsStringSync(JSON.encode(result.toJsonMap()));
+    }
+  }
+
   return status;
 }
 
@@ -105,7 +117,7 @@ class BatchCompiler extends AbstractCompiler {
     _dartCore = context.typeProvider.objectType.element.library;
   }
 
-  ErrorCollector get reporter => checker.reporter;
+  ErrorCollector get reporter => super.reporter;
 
   /// Compiles every file in [options.inputs].
   /// Returns true on successful compile.
@@ -216,10 +228,7 @@ class BatchCompiler extends AbstractCompiler {
     for (var element in unitElements) {
       var unit = context.resolveCompilationUnit(element.source, library);
       units.add(unit);
-      failureInLib = logErrors(element.source) || failureInLib;
-      checker.reset();
-      checker.visitCompilationUnit(unit);
-      if (checker.failure) failureInLib = true;
+      failureInLib = computeErrors(element.source) || failureInLib;
     }
     if (failureInLib) _compilationRecord[library] = false;
 
@@ -350,19 +359,11 @@ class BatchCompiler extends AbstractCompiler {
 abstract class AbstractCompiler {
   final CompilerOptions options;
   final AnalysisContext context;
-  final CodeChecker checker;
+  final AnalysisErrorListener reporter;
 
-  AbstractCompiler(AnalysisContext context, CompilerOptions options,
-      [AnalysisErrorListener reporter])
-      : context = context,
-        options = options,
-        checker = new CodeChecker(
-            new TypeRules(context.typeProvider, options: options.strongOptions),
-            reporter ?? AnalysisErrorListener.NULL_LISTENER);
+  AbstractCompiler(this.context, this.options, [this.reporter]);
 
   String get outputDir => options.codegenOptions.outputDir;
-  TypeRules get rules => checker.rules;
-  AnalysisErrorListener get reporter => checker.reporter;
 
   Uri stringToUri(String uriString) {
     var uri = uriString.startsWith('dart:') || uriString.startsWith('package:')
@@ -445,23 +446,33 @@ abstract class AbstractCompiler {
 
   /// Log any errors encountered when resolving [source] and return whether any
   /// errors were found.
-  bool logErrors(Source source) {
-    List<AnalysisError> errors = context.computeErrors(source);
+  bool computeErrors(Source source) {
+    AnalysisContext errorContext = context;
+    // TODO(jmesserly): should this be a fix somewhere in analyzer?
+    // otherwise we fail to find the parts.
+    if (source.uri.scheme == 'dart') {
+      errorContext = context.sourceFactory.dartSdk.context;
+    }
+    List<AnalysisError> errors = errorContext.computeErrors(source);
     bool failure = false;
-    if (errors.isNotEmpty) {
-      for (var error in errors) {
-        // Always skip TODOs.
-        if (error.errorCode.type == ErrorType.TODO) continue;
+    for (var error in errors) {
+      // Always skip TODOs.
+      if (error.errorCode.type == ErrorType.TODO) continue;
 
-        // Skip hints for now. In the future these could be turned on via flags.
-        if (error.errorCode.errorSeverity.ordinal <
-            ErrorSeverity.WARNING.ordinal) {
-          continue;
+      // TODO(jmesserly): for now, treat DDC errors as having a different
+      // error level from Analayzer ones.
+      if (error.errorCode.name.startsWith('dev_compiler')) {
+        reporter.onError(error);
+        if (error.errorCode.errorSeverity == ErrorSeverity.ERROR) {
+          failure = true;
         }
-
+      } else if (error.errorCode.errorSeverity.ordinal >=
+          ErrorSeverity.WARNING.ordinal) {
         // All analyzer warnings or errors are errors for DDC.
         failure = true;
         reporter.onError(error);
+      } else {
+        // Skip hints for now.
       }
     }
     return failure;
